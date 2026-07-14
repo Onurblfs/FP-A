@@ -542,7 +542,7 @@ function ConvertTo-SendKeysLiteral {
     return $builder.ToString()
 }
 
-function Set-SaveDialogPath {
+function Write-SaveDialogPath {
     param(
         [System.Windows.Automation.AutomationElement]$Dialog,
         [string]$Path
@@ -681,7 +681,7 @@ $powerBIPath = Resolve-PowerBIExecutable -ExplicitPath $PowerBIExecutable
 $reportName = [IO.Path]::GetFileNameWithoutExtension($inputFullPath)
 $quotedInputPath = '"{0}"' -f $inputFullPath.Replace('"', '\"')
 
-Write-Host "Abrindo '$inputFullPath' no Power BI Desktop..."
+Write-Verbose "Abrindo '$inputFullPath' no Power BI Desktop..."
 $startedProcess = Start-Process -FilePath $powerBIPath -ArgumentList $quotedInputPath -PassThru
 $powerBIProcess = Wait-PowerBIWindow -StartedProcessId $startedProcess.Id `
     -ReportName $reportName -Timeout $TimeoutSeconds
@@ -690,7 +690,7 @@ $powerBIProcess = Wait-PowerBIWindow -StartedProcessId $startedProcess.Id `
 [void][PowerBIWindowHelper]::SetForegroundWindow($powerBIProcess.MainWindowHandle)
 
 if ($LoadDelaySeconds -gt 0) {
-    Write-Host "Aguardando $LoadDelaySeconds segundos para o carregamento do relatorio..."
+    Write-Verbose "Aguardando $LoadDelaySeconds segundos para o carregamento do relatorio..."
     Start-Sleep -Seconds $LoadDelaySeconds
 }
 
@@ -726,7 +726,7 @@ if (-not $pdfMenu) {
 $exportStartedAt = [DateTime]::UtcNow.AddSeconds(-2)
 Invoke-UiElement -Element $pdfMenu
 
-Write-Host 'Aguardando a conclusao da exportacao...'
+Write-Verbose 'Aguardando a conclusao da exportacao...'
 $artifact = Wait-ExportArtifact -ProcessId $powerBIProcess.Id `
     -NotBefore $exportStartedAt -DestinationPath $outputFullPath `
     -Timeout $TimeoutSeconds
@@ -734,7 +734,7 @@ $artifact = Wait-ExportArtifact -ProcessId $powerBIProcess.Id `
 if ($artifact.Type -eq 'SaveDialog') {
     $saveDialog = $artifact.Value
     $saveDialog.SetFocus()
-    Set-SaveDialogPath -Dialog $saveDialog -Path $outputFullPath
+    Write-SaveDialogPath -Dialog $saveDialog -Path $outputFullPath
 
     $saveButton = Wait-UiElement -Root $saveDialog -Names @('Save', 'Salvar') `
         -ControlTypes @([System.Windows.Automation.ControlType]::Button) -Timeout 10
@@ -762,4 +762,4 @@ if ($ClosePowerBI) {
     }
 }
 
-Write-Host "PDF exportado com sucesso: $($pdfFile.FullName)"
+Write-Output "PDF exportado com sucesso: $($pdfFile.FullName)"
