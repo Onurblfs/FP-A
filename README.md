@@ -29,7 +29,7 @@ um segmento histórico arbitrariamente.
 
 ## Execução
 
-1. Confirme que o Python 3.11 ou superior está instalado.
+1. Confirme que o Python 3.8 ou superior está instalado.
 2. Dê duplo clique em `EXECUTAR.bat`.
 3. Na primeira execução, confira o `.env` aberto no Bloco de Notas.
 4. Feche o Bloco de Notas para continuar.

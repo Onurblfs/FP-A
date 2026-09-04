@@ -253,13 +253,17 @@ def ler_credenciais(config: Config) -> tuple[str, str]:
 
 def consultar_segmentos(dsn: str, usuario: str, senha: str) -> pd.DataFrame:
     LOGGER.info("Consultando segmentos no DSN=%s...", dsn)
-    with (
-        oracledb.connect(user=usuario, password=senha, dsn=dsn) as conexao,
-        conexao.cursor() as cursor,
-    ):
-        cursor.execute(CONSULTA_SEGMENTOS)
-        colunas = [str(descricao[0]).upper() for descricao in cursor.description]
-        linhas = cursor.fetchall()
+    with oracledb.connect(  # noqa: SIM117
+        user=usuario,
+        password=senha,
+        dsn=dsn,
+    ) as conexao:
+        with conexao.cursor() as cursor:
+            cursor.execute(CONSULTA_SEGMENTOS)
+            colunas = [
+                str(descricao[0]).upper() for descricao in cursor.description
+            ]
+            linhas = cursor.fetchall()
     LOGGER.info("Linhas retornadas pela consulta: %s", f"{len(linhas):,}")
     return pd.DataFrame.from_records(linhas, columns=colunas)
 
@@ -289,7 +293,7 @@ def preparar_mapa_segmentos(segmentos: pd.DataFrame) -> dict[str, str]:
         )
 
     mapa = mapa.drop_duplicates("_CNPJ14_CHAVE")
-    return dict(zip(mapa["_CNPJ14_CHAVE"], mapa["SEGMENTO"], strict=True))
+    return dict(zip(mapa["_CNPJ14_CHAVE"], mapa["SEGMENTO"]))
 
 
 def cruzar_segmentos(

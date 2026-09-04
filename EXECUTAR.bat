@@ -19,7 +19,7 @@ if not defined PYTHON if exist "%LOCALAPPDATA%\Programs\Python\Python311\python.
 if not defined PYTHON where python >nul 2>&1 && set "PYTHON=python"
 
 if not defined PYTHON (
-  echo [ERRO] Python 3.11 ou superior nao encontrado.
+  echo [ERRO] Python 3.8 ou superior nao encontrado.
   pause
   exit /b 1
 )
