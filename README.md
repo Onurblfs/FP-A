@@ -61,6 +61,18 @@ UTF-8, Windows-1252 ou Latin-1.
 A planilha de credenciais deve possuir `user_dw2` e `pass_dw2` na aba `Plan1`.
 Esses valores podem ser alterados no `.env`.
 
+## Executar pelo Jupyter
+
+Coloque `adicionar_segmento.py` na mesma pasta do notebook e execute em uma
+célula:
+
+```python
+%run adicionar_segmento.py
+```
+
+O script usa diretamente as bibliotecas e a conexão Oracle disponíveis no
+kernel do Jupyter. Com os caminhos e o DSN padrão acima, o `.env` é opcional.
+
 ## Uso manual
 
 ```powershell

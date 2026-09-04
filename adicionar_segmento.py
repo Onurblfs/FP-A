@@ -81,16 +81,6 @@ def carregar_env(caminho: Path) -> None:
             os.environ.setdefault(chave, valor)
 
 
-def valor_obrigatorio(nome: str) -> str:
-    valor = os.getenv(nome, "").strip()
-    if not valor:
-        raise ValueError(
-            f"Configuração obrigatória ausente: {nome}. "
-            "Copie .env.example para .env e confira os valores."
-        )
-    return valor
-
-
 def carregar_config(args: argparse.Namespace) -> Config:
     carregar_env(RAIZ_PROJETO / ".env")
     arquivo = args.arquivo or os.getenv(
@@ -102,7 +92,7 @@ def carregar_config(args: argparse.Namespace) -> Config:
     )
     return Config(
         arquivo_csv=Path(arquivo).expanduser(),
-        dsn_oracle=valor_obrigatorio("DSN_ORACLE"),
+        dsn_oracle=os.getenv("DSN_ORACLE", "P00DW1").strip() or "P00DW1",
         arquivo_credenciais=Path(
             os.getenv(
                 "ARQUIVO_CREDENCIAIS",
