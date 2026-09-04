@@ -374,14 +374,6 @@ def salvar_csv(
 ) -> Path | None:
     destino.parent.mkdir(parents=True, exist_ok=True)
     backup = None
-    if criar_backup and destino.is_file():
-        pasta_backup = destino.parent / "backup"
-        pasta_backup.mkdir(parents=True, exist_ok=True)
-        instante = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
-        backup = pasta_backup / f"{destino.stem}_{instante}{destino.suffix}"
-        shutil.copy2(destino, backup)
-        LOGGER.info("Backup criado: %s", backup)
-
     descritor, temporario_nome = tempfile.mkstemp(
         prefix=f".{destino.stem}_",
         suffix=".tmp",
@@ -395,8 +387,14 @@ def salvar_csv(
             index=False,
             sep=formato.separador,
             encoding=formato.encoding,
-            lineterminator="\n",
         )
+        if criar_backup and destino.is_file():
+            pasta_backup = destino.parent / "backup"
+            pasta_backup.mkdir(parents=True, exist_ok=True)
+            instante = datetime.now().astimezone().strftime("%Y%m%d_%H%M%S")
+            backup = pasta_backup / f"{destino.stem}_{instante}{destino.suffix}"
+            shutil.copy2(destino, backup)
+            LOGGER.info("Backup criado: %s", backup)
         os.replace(temporario, destino)
     finally:
         temporario.unlink(missing_ok=True)

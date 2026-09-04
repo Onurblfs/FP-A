@@ -163,6 +163,29 @@ class GravacaoTests(unittest.TestCase):
             atualizado = pd.read_csv(destino, sep=";", dtype=str)
             self.assertEqual(atualizado.iloc[0]["SEGMENTO"], "PME")
 
+    def test_nao_cria_backup_quando_serializacao_falha(self):
+        with tempfile.TemporaryDirectory() as pasta:
+            destino = Path(pasta) / "Consolidado.csv"
+            conteudo_original = "CNPJ14;VALOR\n123.0;10\n"
+            destino.write_text(conteudo_original, encoding="cp1252")
+            dados = pd.DataFrame({"CNPJ14": ["123"], "SEGMENTO": ["PME"]})
+
+            with patch.object(
+                dados, "to_csv", side_effect=TypeError("falha")
+            ), self.assertRaises(TypeError):
+                salvar_csv(
+                    dados,
+                    destino,
+                    FormatoCsv(encoding="cp1252", separador=";"),
+                    criar_backup=True,
+                )
+
+            self.assertEqual(
+                destino.read_text(encoding="cp1252"),
+                conteudo_original,
+            )
+            self.assertFalse((destino.parent / "backup").exists())
+
 
 if __name__ == "__main__":
     unittest.main()
