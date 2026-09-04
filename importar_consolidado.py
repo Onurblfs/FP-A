@@ -15,7 +15,7 @@ import re
 import sys
 import unicodedata
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
@@ -354,26 +354,25 @@ class CargaOracle:
         tabela = validar_identificador(tabela, "Tabela")
         tabela_sql = nome_qualificado(schema, tabela)
 
-        with self.conectar() as conexao:
-            with conexao.cursor() as cursor:
-                if schema:
-                    owner = validar_schema(schema)
-                else:
-                    cursor.execute("SELECT USER FROM DUAL")
-                    owner = str(cursor.fetchone()[0]).upper()
+        with self.conectar() as conexao, conexao.cursor() as cursor:
+            if schema:
+                owner = validar_schema(schema)
+            else:
+                cursor.execute("SELECT USER FROM DUAL")
+                owner = str(cursor.fetchone()[0]).upper()
 
-                existe = self.tabela_existe(cursor, owner, tabela)
-                if existe and modo == "recriar":
-                    cursor.execute(f"DROP TABLE {tabela_sql}")
-                    existe = False
-                    LOGGER.info("Tabela removida para recriação: %s", tabela_sql)
+            existe = self.tabela_existe(cursor, owner, tabela)
+            if existe and modo == "recriar":
+                cursor.execute(f"DROP TABLE {tabela_sql}")
+                existe = False
+                LOGGER.info("Tabela removida para recriação: %s", tabela_sql)
 
-                if not existe:
-                    cursor.execute(f"CREATE TABLE {tabela_sql} {ddl_colunas(df)}")
-                    LOGGER.info("Tabela criada: %s", tabela_sql)
-                else:
-                    self.validar_estrutura(cursor, owner, tabela, list(df.columns))
-                conexao.commit()
+            if not existe:
+                cursor.execute(f"CREATE TABLE {tabela_sql} {ddl_colunas(df)}")
+                LOGGER.info("Tabela criada: %s", tabela_sql)
+            else:
+                self.validar_estrutura(cursor, owner, tabela, list(df.columns))
+            conexao.commit()
         return owner
 
     def carregar(
@@ -393,44 +392,43 @@ class CargaOracle:
             f"INSERT INTO {tabela_sql} ({colunas_sql}) VALUES ({binds})"
         )
 
-        with self.conectar() as conexao:
-            with conexao.cursor() as cursor:
-                antes = 0
-                removidos = 0
-                if modo in {"substituir", "recriar"}:
-                    cursor.execute(f"DELETE FROM {tabela_sql}")
-                    removidos = max(cursor.rowcount, 0)
-                else:
-                    cursor.execute(f"SELECT COUNT(*) FROM {tabela_sql}")
-                    antes = int(cursor.fetchone()[0])
-
-                inseridos = 0
-                for inicio in range(0, len(linhas), self.tamanho_lote):
-                    lote = linhas[inicio : inicio + self.tamanho_lote]
-                    cursor.executemany(insert_sql, lote)
-                    inseridos += len(lote)
-                    LOGGER.info("Linhas enviadas: %s", f"{inseridos:,}")
-
+        with self.conectar() as conexao, conexao.cursor() as cursor:
+            antes = 0
+            removidos = 0
+            if modo in {"substituir", "recriar"}:
+                cursor.execute(f"DELETE FROM {tabela_sql}")
+                removidos = max(cursor.rowcount, 0)
+            else:
                 cursor.execute(f"SELECT COUNT(*) FROM {tabela_sql}")
-                total = int(cursor.fetchone()[0])
-                esperado = antes + inseridos
-                if total != esperado:
-                    conexao.rollback()
-                    raise RuntimeError(
-                        f"Reconciliação falhou em {tabela_sql}: "
-                        f"esperado={esperado}, encontrado={total}."
-                    )
-                conexao.commit()
+                antes = int(cursor.fetchone()[0])
 
-                LOGGER.info(
-                    "%s | removidas=%s | inseridas=%s | total=%s",
-                    tabela_sql,
-                    f"{removidos:,}",
-                    f"{inseridos:,}",
-                    f"{total:,}",
+            inseridos = 0
+            for inicio in range(0, len(linhas), self.tamanho_lote):
+                lote = linhas[inicio : inicio + self.tamanho_lote]
+                cursor.executemany(insert_sql, lote)
+                inseridos += len(lote)
+                LOGGER.info("Linhas enviadas: %s", f"{inseridos:,}")
+
+            cursor.execute(f"SELECT COUNT(*) FROM {tabela_sql}")
+            total = int(cursor.fetchone()[0])
+            esperado = antes + inseridos
+            if total != esperado:
+                conexao.rollback()
+                raise RuntimeError(
+                    f"Reconciliação falhou em {tabela_sql}: "
+                    f"esperado={esperado}, encontrado={total}."
                 )
-                self.coletar_estatisticas(cursor, owner, tabela)
-                return inseridos
+            conexao.commit()
+
+            LOGGER.info(
+                "%s | removidas=%s | inseridas=%s | total=%s",
+                tabela_sql,
+                f"{removidos:,}",
+                f"{inseridos:,}",
+                f"{total:,}",
+            )
+            self.coletar_estatisticas(cursor, owner, tabela)
+            return inseridos
 
     @staticmethod
     def coletar_estatisticas(cursor, owner: str, tabela: str) -> None:
@@ -475,7 +473,7 @@ def criar_parser() -> argparse.ArgumentParser:
 def executar(args: argparse.Namespace) -> int:
     config = carregar_config(args)
     df = normalizar_colunas(ler_csv(config.arquivo_csv))
-    df["DT_CARGA"] = datetime.now()
+    df["DT_CARGA"] = datetime.now(timezone.utc).astimezone().replace(tzinfo=None)
     df["ARQUIVO_ORIGEM"] = config.arquivo_csv.name
 
     LOGGER.info("Linhas=%s | colunas=%s", f"{len(df):,}", len(df.columns))
