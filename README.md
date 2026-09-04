@@ -34,6 +34,10 @@ um segmento histórico arbitrariamente.
 3. Na primeira execução, confira o `.env` aberto no Bloco de Notas.
 4. Feche o Bloco de Notas para continuar.
 
+O launcher prioriza e ativa o Anaconda corporativo, pois a ativação adiciona
+as DLLs necessárias ao módulo SSL. Ele também aceita tanto `python-oracledb`
+quanto o driver legado `cx_Oracle`.
+
 Antes de substituir o arquivo, o programa cria uma cópia em:
 
 ```text
@@ -78,3 +82,14 @@ python adicionar_segmento.py `
 ```
 
 O `.env` contém configurações locais e não deve ser enviado ao Git.
+
+## Erro de SSL
+
+Se aparecer `SSL module is not available`, o Python/Anaconda está incompleto ou
+não foi ativado corretamente. O launcher agora interrompe antes de chamar o
+`pip` e informa qual Python foi selecionado. Quando as bibliotecas não estiverem
+instaladas no Anaconda, execute no **Anaconda Prompt**:
+
+```text
+conda install pandas openpyxl python-oracledb
+```

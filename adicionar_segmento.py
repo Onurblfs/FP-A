@@ -15,8 +15,12 @@ from datetime import datetime
 from decimal import Decimal, InvalidOperation
 from pathlib import Path
 
-import oracledb
 import pandas as pd
+
+try:
+    import oracledb
+except ImportError:
+    import cx_Oracle as oracledb
 
 LOGGER = logging.getLogger("adicionar_segmento")
 RAIZ_PROJETO = Path(__file__).resolve().parent
