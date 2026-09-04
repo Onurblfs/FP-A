@@ -289,7 +289,10 @@ def consultar_segmentos(
             for inicio in range(0, len(cnpjs), TAMANHO_LOTE_CONSULTA):
                 lote = cnpjs[inicio : inicio + TAMANHO_LOTE_CONSULTA]
                 parametros = {
-                    f"cnpj_{indice}": int(cnpj)
+                    # Mantém o bind textual. Converter para int faz o Oracle
+                    # tentar converter toda a coluna NUM_CNPJ e pode gerar
+                    # ORA-01722 quando a view contém algum valor não numérico.
+                    f"cnpj_{indice}": cnpj
                     for indice, cnpj in enumerate(lote)
                 }
                 binds = ", ".join(f":{nome}" for nome in parametros)

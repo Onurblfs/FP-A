@@ -131,6 +131,10 @@ class ConsultaFiltradaTests(unittest.TestCase):
         self.assertIn("WHERE NUM_CNPJ IN", primeira_consulta)
         self.assertEqual(len(primeiros_parametros), TAMANHO_LOTE_CONSULTA)
         self.assertEqual(len(segundos_parametros), 1)
+        self.assertTrue(
+            all(isinstance(cnpj, str) for cnpj in primeiros_parametros.values())
+        )
+        self.assertEqual(segundos_parametros["cnpj_0"], "00000000000900")
         self.assertNotIn("00000000000900", primeira_consulta)
         self.assertIn(":cnpj_0", segunda_consulta)
 
