@@ -10,6 +10,10 @@ RECEITA_EMPRESARIAL\CONSULTA_SEGMENTO\Consolidado.csv
 Ele consulta `DWH.VW_BI_HIS_SEGMENTO_CARTEIRA` no Oracle, cruza os registros
 por `CNPJ14` e adiciona a coluna `SEGMENTO` ao CSV.
 
+Para reduzir tempo e tráfego, a consulta não baixa mais a view inteira. O
+programa normaliza e deduplica os CNPJs do CSV primeiro e consulta somente
+esses valores, em lotes de 900 binds compatíveis com o limite do Oracle.
+
 ## Tratamento do CNPJ14
 
 O cruzamento normaliza os dois lados para 14 dígitos. Assim, valores do CSV

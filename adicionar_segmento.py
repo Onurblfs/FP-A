@@ -28,6 +28,7 @@ RAIZ_PROJETO = (
     Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
 )
 
+TAMANHO_LOTE_CONSULTA = 900
 CONSULTA_SEGMENTOS = """
 SELECT
     NUM_RAIZ_CNPJ AS CNPJ8,
@@ -35,6 +36,7 @@ SELECT
     NUM_CNPJ AS CNPJ14,
     DSC_PORTE_EMPRESA AS SEGMENTO
 FROM DWH.VW_BI_HIS_SEGMENTO_CARTEIRA
+WHERE NUM_CNPJ IN ({binds})
 GROUP BY
     NUM_RAIZ_CNPJ,
     NUM_RAIZ_CNPJ_CONTROLADOR,
@@ -213,6 +215,12 @@ def normalizar_cnpj14(valor: object) -> str | None:
     return digitos.zfill(14)
 
 
+def extrair_cnpjs_validos(dados: pd.DataFrame) -> list[str]:
+    coluna_cnpj = localizar_coluna_cnpj14(dados)
+    normalizados = dados[coluna_cnpj].map(normalizar_cnpj14).dropna()
+    return sorted(set(normalizados))
+
+
 def ler_credenciais(config: Config) -> tuple[str, str]:
     if config.usuario_oracle or config.senha_oracle:
         if not config.usuario_oracle or not config.senha_oracle:
@@ -254,19 +262,48 @@ def ler_credenciais(config: Config) -> tuple[str, str]:
     return usuario, senha
 
 
-def consultar_segmentos(dsn: str, usuario: str, senha: str) -> pd.DataFrame:
-    LOGGER.info("Consultando segmentos no DSN=%s...", dsn)
+def consultar_segmentos(
+    dsn: str,
+    usuario: str,
+    senha: str,
+    cnpjs: list[str],
+) -> pd.DataFrame:
+    colunas = ["CNPJ8", "NUM_RAIZ_CNPJ_CONTROLADOR", "CNPJ14", "SEGMENTO"]
+    if not cnpjs:
+        return pd.DataFrame(columns=colunas)
+
+    LOGGER.info(
+        "Consultando %s CNPJ(s) no DSN=%s em lotes de até %d...",
+        f"{len(cnpjs):,}",
+        dsn,
+        TAMANHO_LOTE_CONSULTA,
+    )
+    linhas = []
     with oracledb.connect(  # noqa: SIM117
         user=usuario,
         password=senha,
         dsn=dsn,
     ) as conexao:
         with conexao.cursor() as cursor:
-            cursor.execute(CONSULTA_SEGMENTOS)
-            colunas = [
-                str(descricao[0]).upper() for descricao in cursor.description
-            ]
-            linhas = cursor.fetchall()
+            cursor.arraysize = 10_000
+            for inicio in range(0, len(cnpjs), TAMANHO_LOTE_CONSULTA):
+                lote = cnpjs[inicio : inicio + TAMANHO_LOTE_CONSULTA]
+                parametros = {
+                    f"cnpj_{indice}": int(cnpj)
+                    for indice, cnpj in enumerate(lote)
+                }
+                binds = ", ".join(f":{nome}" for nome in parametros)
+                cursor.execute(CONSULTA_SEGMENTOS.format(binds=binds), parametros)
+                colunas = [
+                    str(descricao[0]).upper()
+                    for descricao in cursor.description
+                ]
+                linhas.extend(cursor.fetchall())
+                LOGGER.info(
+                    "Lote consultado: %s/%s CNPJs",
+                    f"{min(inicio + len(lote), len(cnpjs)):,}",
+                    f"{len(cnpjs):,}",
+                )
     LOGGER.info("Linhas retornadas pela consulta: %s", f"{len(linhas):,}")
     return pd.DataFrame.from_records(linhas, columns=colunas)
 
@@ -388,8 +425,21 @@ def criar_parser() -> argparse.ArgumentParser:
 def executar(args: argparse.Namespace) -> int:
     config = carregar_config(args)
     dados, formato = ler_csv(config.arquivo_csv)
+    cnpjs = extrair_cnpjs_validos(dados)
+    if not cnpjs:
+        raise ValueError("O CSV não contém nenhum CNPJ14 válido para consultar.")
+    LOGGER.info(
+        "CSV: %s linhas | %s CNPJ(s) válido(s) e único(s)",
+        f"{len(dados):,}",
+        f"{len(cnpjs):,}",
+    )
     usuario, senha = ler_credenciais(config)
-    segmentos = consultar_segmentos(config.dsn_oracle, usuario, senha)
+    segmentos = consultar_segmentos(
+        config.dsn_oracle,
+        usuario,
+        senha,
+        cnpjs,
+    )
     resultado = cruzar_segmentos(dados, segmentos)
 
     LOGGER.info(

@@ -3,12 +3,16 @@ import tempfile
 import types
 import unittest
 from pathlib import Path
+from unittest.mock import MagicMock, patch
 
 import pandas as pd
 
 from adicionar_segmento import (
+    TAMANHO_LOTE_CONSULTA,
     FormatoCsv,
+    consultar_segmentos,
     cruzar_segmentos,
+    extrair_cnpjs_validos,
     ler_csv,
     normalizar_cnpj14,
     preparar_mapa_segmentos,
@@ -84,6 +88,51 @@ class CruzamentoTests(unittest.TestCase):
         )
         with self.assertRaisesRegex(ValueError, "segmentos diferentes"):
             preparar_mapa_segmentos(oracle)
+
+
+class ConsultaFiltradaTests(unittest.TestCase):
+    def test_extrai_somente_cnpjs_validos_e_unicos(self):
+        dados = pd.DataFrame(
+            {
+                "cnpj14": [
+                    "12345678000190.0",
+                    "12.345.678/0001-90",
+                    "00000000000123.0",
+                    "inválido",
+                ]
+            }
+        )
+        self.assertEqual(
+            extrair_cnpjs_validos(dados),
+            ["00000000000123", "12345678000190"],
+        )
+
+    @patch("adicionar_segmento.oracledb.connect")
+    def test_consulta_em_lotes_com_binds(self, conectar):
+        conexao = MagicMock()
+        cursor = MagicMock()
+        conectar.return_value.__enter__.return_value = conexao
+        conexao.cursor.return_value.__enter__.return_value = cursor
+        cursor.description = [
+            ("CNPJ8",),
+            ("NUM_RAIZ_CNPJ_CONTROLADOR",),
+            ("CNPJ14",),
+            ("SEGMENTO",),
+        ]
+        cursor.fetchall.return_value = []
+        cnpjs = [str(numero).zfill(14) for numero in range(901)]
+
+        resultado = consultar_segmentos("P00DW1", "usuario", "senha", cnpjs)
+
+        self.assertTrue(resultado.empty)
+        self.assertEqual(cursor.execute.call_count, 2)
+        primeira_consulta, primeiros_parametros = cursor.execute.call_args_list[0].args
+        segunda_consulta, segundos_parametros = cursor.execute.call_args_list[1].args
+        self.assertIn("WHERE NUM_CNPJ IN", primeira_consulta)
+        self.assertEqual(len(primeiros_parametros), TAMANHO_LOTE_CONSULTA)
+        self.assertEqual(len(segundos_parametros), 1)
+        self.assertNotIn("00000000000900", primeira_consulta)
+        self.assertIn(":cnpj_0", segunda_consulta)
 
 
 class GravacaoTests(unittest.TestCase):
