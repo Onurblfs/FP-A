@@ -1,7 +1,7 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions
-title Importar Consolidado CSV para Oracle
+title Adicionar SEGMENTO ao Consolidado.csv
 cd /d "%~dp0"
 
 set "PYTHON="
@@ -36,15 +36,15 @@ if errorlevel 1 (
 )
 
 echo.
-echo Importando C:\Users\n5919189\Downloads\Consolidado.csv...
-"%PYTHON%" importar_consolidado.py
+echo Consultando o DWH e adicionando SEGMENTO ao Consolidado.csv...
+"%PYTHON%" adicionar_segmento.py
 set "RC=%ERRORLEVEL%"
 
 echo.
 if "%RC%"=="0" (
-  echo Carga concluida com sucesso.
+  echo Arquivo atualizado com sucesso.
 ) else (
-  echo Carga finalizada com erro. Consulte as mensagens acima.
+  echo Atualizacao finalizada com erro. Consulte as mensagens acima.
 )
 pause
 exit /b %RC%
