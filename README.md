@@ -3,7 +3,8 @@
 Este projeto atualiza:
 
 ```text
-C:\Users\n5919189\Downloads\Consolidado.csv
+\\cllgpdw8551.corp.clarobr\PLANEJAMENTO_FINANCEIRO\BASES\
+RECEITA_EMPRESARIAL\CONSULTA_SEGMENTO\Consolidado.csv
 ```
 
 Ele consulta `DWH.VW_BI_HIS_SEGMENTO_CARTEIRA` no Oracle, cruza os registros
@@ -36,7 +37,9 @@ um segmento histórico arbitrariamente.
 Antes de substituir o arquivo, o programa cria uma cópia em:
 
 ```text
-C:\Users\n5919189\Downloads\backup\Consolidado_AAAAMMDD_HHMMSS.csv
+\\cllgpdw8551.corp.clarobr\PLANEJAMENTO_FINANCEIRO\BASES\
+RECEITA_EMPRESARIAL\CONSULTA_SEGMENTO\backup\
+Consolidado_AAAAMMDD_HHMMSS.csv
 ```
 
 O separador e o encoding originais são preservados. São aceitos CSVs
@@ -48,7 +51,7 @@ UTF-8, Windows-1252 ou Latin-1.
 | Configuração | Valor |
 |---|---|
 | DSN | `P00DW1` |
-| CSV | `C:\Users\n5919189\Downloads\Consolidado.csv` |
+| CSV | `\\cllgpdw8551.corp.clarobr\...\CONSULTA_SEGMENTO\Consolidado.csv` |
 | Credenciais | `C:\Users\n5919189\Documents\DB_acess.xlsx` |
 
 A planilha de credenciais deve possuir `user_dw2` e `pass_dw2` na aba `Plan1`.
@@ -71,7 +74,7 @@ Salvar em outro arquivo:
 
 ```powershell
 python adicionar_segmento.py `
-  --saida "C:\Users\n5919189\Downloads\Consolidado_com_segmento.csv"
+  --saida "\\cllgpdw8551.corp.clarobr\...\Consolidado_com_segmento.csv"
 ```
 
 O `.env` contém configurações locais e não deve ser enviado ao Git.

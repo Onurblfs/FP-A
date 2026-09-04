@@ -91,7 +91,10 @@ def carregar_config(args: argparse.Namespace) -> Config:
     carregar_env(RAIZ_PROJETO / ".env")
     arquivo = args.arquivo or os.getenv(
         "ARQUIVO_CSV",
-        r"C:\Users\n5919189\Downloads\Consolidado.csv",
+        (
+            r"\\cllgpdw8551.corp.clarobr\PLANEJAMENTO_FINANCEIRO"
+            r"\BASES\RECEITA_EMPRESARIAL\CONSULTA_SEGMENTO\Consolidado.csv"
+        ),
     )
     return Config(
         arquivo_csv=Path(arquivo).expanduser(),
