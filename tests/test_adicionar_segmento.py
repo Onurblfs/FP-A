@@ -1,4 +1,6 @@
+import sys
 import tempfile
+import types
 import unittest
 from pathlib import Path
 
@@ -12,6 +14,22 @@ from adicionar_segmento import (
     preparar_mapa_segmentos,
     salvar_csv,
 )
+
+
+class JupyterTests(unittest.TestCase):
+    def test_codigo_carrega_sem_variavel_file(self):
+        caminho = Path(__file__).resolve().parent.parent / "adicionar_segmento.py"
+        modulo = types.ModuleType("celula_jupyter_teste")
+        sys.modules[modulo.__name__] = modulo
+        try:
+            exec(  # noqa: S102 - simula exatamente uma célula do Jupyter
+                compile(caminho.read_text(encoding="utf-8"), str(caminho), "exec"),
+                modulo.__dict__,
+            )
+            self.assertTrue(modulo.EXECUTANDO_NO_JUPYTER)
+            self.assertEqual(modulo.RAIZ_PROJETO, Path.cwd())
+        finally:
+            del sys.modules[modulo.__name__]
 
 
 class NormalizacaoCnpjTests(unittest.TestCase):

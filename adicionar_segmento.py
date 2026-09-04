@@ -23,7 +23,10 @@ except ImportError:
     import cx_Oracle as oracledb
 
 LOGGER = logging.getLogger("adicionar_segmento")
-RAIZ_PROJETO = Path(__file__).resolve().parent
+EXECUTANDO_NO_JUPYTER = "ipykernel" in sys.modules or "__file__" not in globals()
+RAIZ_PROJETO = (
+    Path(__file__).resolve().parent if "__file__" in globals() else Path.cwd()
+)
 
 CONSULTA_SEGMENTOS = """
 SELECT
@@ -418,11 +421,14 @@ def main() -> int:
         datefmt="%Y-%m-%d %H:%M:%S",
     )
     try:
-        return executar(criar_parser().parse_args())
+        argumentos = [] if EXECUTANDO_NO_JUPYTER else None
+        return executar(criar_parser().parse_args(argumentos))
     except Exception:
         LOGGER.exception("Falha ao adicionar SEGMENTO ao CSV.")
         return 1
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    codigo_saida = main()
+    if not EXECUTANDO_NO_JUPYTER:
+        sys.exit(codigo_saida)

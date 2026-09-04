@@ -70,6 +70,10 @@ célula:
 %run adicionar_segmento.py
 ```
 
+Também é possível colar o conteúdo completo do script diretamente em uma
+célula. O código detecta o kernel e não depende de `__file__`, não processa os
+argumentos internos do Jupyter e não encerra o kernel com `SystemExit`.
+
 O script usa diretamente as bibliotecas e a conexão Oracle disponíveis no
 kernel do Jupyter. Com os caminhos e o DSN padrão acima, o `.env` é opcional.
 
