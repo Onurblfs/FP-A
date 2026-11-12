@@ -1,8 +1,9 @@
 -- Resumo dos clientes por trás da variação de um produto de VAS.
 --
 -- Mesmos critérios de vas_clientes_do_produto.sql. Em vez da lista de
--- clientes, agrupa por TIPO_CONTRIBUICAO para responder rápido: quanto do
--- ~1,5 mi veio de cliente novo, quanto de aumento real e quanto de estorno.
+-- clientes, agrupa por DSC_ARTIGO e TIPO_CONTRIBUICAO para responder
+-- rápido: quanto do ~1,5 mi veio de cliente novo, quanto de aumento real
+-- e quanto de estorno, por artigo.
 
 WITH PARAMETROS AS (
     SELECT
@@ -16,6 +17,7 @@ BASE AS (
         T.COD_OPERADORA,
         T.NUM_CONTRATO,
         T.DSC_PRODUTO,
+        T.DSC_ARTIGO,
         SUM(CASE WHEN T.DAT_COMPETENCIA = P.MES_ANTERIOR
                  THEN T.VAL_CALCULADO ELSE 0 END) AS VAL_MES_ANTERIOR,
         SUM(CASE WHEN T.DAT_COMPETENCIA = P.MES_ATUAL
@@ -29,7 +31,8 @@ BASE AS (
     GROUP BY
         T.COD_OPERADORA,
         T.NUM_CONTRATO,
-        T.DSC_PRODUTO
+        T.DSC_PRODUTO,
+        T.DSC_ARTIGO
 ),
 CLIENTES_COM_AUMENTO AS (
     SELECT
@@ -46,6 +49,7 @@ POR_CLIENTE AS (
         B.COD_OPERADORA,
         B.NUM_CONTRATO,
         B.DSC_PRODUTO,
+        B.DSC_ARTIGO,
         B.VAL_MES_ANTERIOR,
         B.VAL_MES_ATUAL,
         B.VAL_MES_ATUAL - B.VAL_MES_ANTERIOR AS VARIACAO,
@@ -68,6 +72,7 @@ SELECT *
 FROM (
     SELECT
         DSC_PRODUTO,
+        DSC_ARTIGO,
         TIPO_CONTRIBUICAO,
         COUNT(*) AS QTD_CLIENTES,
         ROUND(SUM(VAL_MES_ANTERIOR), 2) AS VAL_MES_ANTERIOR,
@@ -76,6 +81,7 @@ FROM (
     FROM POR_CLIENTE
     GROUP BY
         DSC_PRODUTO,
+        DSC_ARTIGO,
         TIPO_CONTRIBUICAO
 ) R
 -- ABS(SUM(VARIACAO)) no ORDER BY dá ORA-00935 no Oracle: o alias
