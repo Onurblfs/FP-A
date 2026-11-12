@@ -1,13 +1,15 @@
 -- Visão dos dois movimentos de NT: Receita/Bruta e Desconto/Bruta.
 --
--- Espelha o pivot do Tableau (setembro contra outubro). Ajuste as datas
--- em PARAMETROS. Se no Tableau houver filtro de família (ex.: CLARO FIBRA)
--- e existir coluna equivalente na tabela, acrescente no WHERE.
+-- Só contas classificadas como CLARO FIBRA no de-para
+-- N5919189.BI_DIM_CONTACONTABIL_FIXA (PRODUTO_COGNOS).
+-- Ajuste as datas em PARAMETROS. Se o nome no de-para for outro,
+-- troque o valor de FILTRO_PRODUTO_COGNOS.
 
 WITH PARAMETROS AS (
     SELECT
         DATE '2026-09-01' AS MES_ANTERIOR,
-        DATE '2026-10-01' AS MES_ATUAL
+        DATE '2026-10-01' AS MES_ATUAL,
+        'CLARO FIBRA' AS FILTRO_PRODUTO_COGNOS
     FROM DUAL
 )
 SELECT
@@ -20,11 +22,14 @@ SELECT
     ROUND(SUM(CASE WHEN T.DAT_COMPETENCIA = P.MES_ATUAL
                    THEN T.VAL_CALCULADO ELSE -T.VAL_CALCULADO END), 2) AS VARIACAO
 FROM u92870757.BI_FP_RECEITA_FIXA T
+JOIN N5919189.BI_DIM_CONTACONTABIL_FIXA D
+  ON TRIM(TO_CHAR(D.CONTA_CONTABIL)) = TRIM(TO_CHAR(T.COD_CONTA_CONTABIL))
 CROSS JOIN PARAMETROS P
 WHERE T.DSC_TIPO_PRODUTO = 'NT'
   AND T.DSC_TIPO IN ('Receita', 'Desconto', 'Imposto')
   AND T.DSC_SUBTIPO IN ('Bruta', 'Unbilled', 'Cancelamento')
   AND T.DAT_COMPETENCIA IN (P.MES_ANTERIOR, P.MES_ATUAL)
+  AND D.PRODUTO_COGNOS = P.FILTRO_PRODUTO_COGNOS
 GROUP BY
     T.DSC_TIPO,
     T.DSC_SUBTIPO

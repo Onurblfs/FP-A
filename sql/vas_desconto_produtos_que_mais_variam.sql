@@ -1,12 +1,13 @@
--- Produtos de VAS cujo Desconto/Bruta mais variou entre os dois meses.
+-- Produtos de VAS (CLARO FIBRA) cujo Desconto/Bruta mais variou.
 --
--- Desconto entra negativo. Queda de desconto = valor menos negativo =
--- VARIACAO positiva (melhora o total). Ajuste as datas em PARAMETROS.
+-- Usa o de-para N5919189.BI_DIM_CONTACONTABIL_FIXA.
+-- Desconto entra negativo. Queda de desconto = VARIACAO positiva.
 
 WITH PARAMETROS AS (
     SELECT
         DATE '2026-09-01' AS MES_ANTERIOR,
-        DATE '2026-10-01' AS MES_ATUAL
+        DATE '2026-10-01' AS MES_ATUAL,
+        'CLARO FIBRA' AS FILTRO_PRODUTO_COGNOS
     FROM DUAL
 )
 SELECT *
@@ -21,11 +22,14 @@ FROM (
         ROUND(SUM(CASE WHEN T.DAT_COMPETENCIA = P.MES_ATUAL
                        THEN T.VAL_CALCULADO ELSE -T.VAL_CALCULADO END), 2) AS VARIACAO
     FROM u92870757.BI_FP_RECEITA_FIXA T
+    JOIN N5919189.BI_DIM_CONTACONTABIL_FIXA D
+      ON TRIM(TO_CHAR(D.CONTA_CONTABIL)) = TRIM(TO_CHAR(T.COD_CONTA_CONTABIL))
     CROSS JOIN PARAMETROS P
     WHERE T.DSC_TIPO_PRODUTO = 'NT'
       AND T.DSC_TIPO = 'Desconto'
       AND T.DSC_SUBTIPO = 'Bruta'
       AND T.DAT_COMPETENCIA IN (P.MES_ANTERIOR, P.MES_ATUAL)
+      AND D.PRODUTO_COGNOS = P.FILTRO_PRODUTO_COGNOS
     GROUP BY
         T.DSC_PRODUTO,
         T.DSC_ARTIGO

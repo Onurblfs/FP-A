@@ -1,18 +1,20 @@
--- Fecha a variação de Desconto/Bruta de NT por tipo de movimento.
+-- Fecha a variação de Desconto/Bruta de NT (CLARO FIBRA) por tipo.
 --
+-- Usa o de-para N5919189.BI_DIM_CONTACONTABIL_FIXA.
 -- Desconto é negativo. Interpretação de TIPO_CONTRIBUICAO:
---   DESCONTO_SUMIU     = tinha desconto em set e zero em out (ajuda a "queda")
---   DESCONTO_MENOR     = ainda tem, mas menos negativo (ajuda a "queda")
---   DESCONTO_NOVO      = zero em set e desconto em out (aumenta desconto)
---   DESCONTO_MAIOR     = desconto ficou mais negativo (aumenta desconto)
+--   DESCONTO_SUMIU = tinha desconto em set e zero em out
+--   DESCONTO_MENOR = ainda tem, mas menos negativo
+--   DESCONTO_NOVO  = zero em set e desconto em out
+--   DESCONTO_MAIOR = desconto ficou mais negativo
 --
--- A soma de VARIACAO deve bater com Desconto/Bruta no resumo dos dois
--- movimentos. Ajuste datas e, se quiser um produto só, FILTRO_PRODUTO.
+-- A soma de VARIACAO deve bater com Desconto/Bruta no resumo filtrado
+-- por CLARO FIBRA.
 
 WITH PARAMETROS AS (
     SELECT
         DATE '2026-09-01' AS MES_ANTERIOR,
         DATE '2026-10-01' AS MES_ATUAL,
+        'CLARO FIBRA' AS FILTRO_PRODUTO_COGNOS,
         '%' AS FILTRO_PRODUTO
     FROM DUAL
 ),
@@ -27,12 +29,15 @@ BASE AS (
         SUM(CASE WHEN T.DAT_COMPETENCIA = P.MES_ATUAL
                  THEN T.VAL_CALCULADO ELSE 0 END) AS VAL_MES_ATUAL
     FROM u92870757.BI_FP_RECEITA_FIXA T
+    JOIN N5919189.BI_DIM_CONTACONTABIL_FIXA D
+      ON TRIM(TO_CHAR(D.CONTA_CONTABIL)) = TRIM(TO_CHAR(T.COD_CONTA_CONTABIL))
     CROSS JOIN PARAMETROS P
     WHERE T.DSC_TIPO_PRODUTO = 'NT'
       AND T.DSC_TIPO = 'Desconto'
       AND T.DSC_SUBTIPO = 'Bruta'
       AND T.DAT_COMPETENCIA IN (P.MES_ANTERIOR, P.MES_ATUAL)
       AND T.DSC_PRODUTO LIKE P.FILTRO_PRODUTO
+      AND D.PRODUTO_COGNOS = P.FILTRO_PRODUTO_COGNOS
     GROUP BY
         T.COD_OPERADORA,
         T.NUM_CONTRATO,

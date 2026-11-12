@@ -1,20 +1,15 @@
--- Passo 2: produtos de VAS que mais variaram entre os clientes com aumento.
+-- Passo 2: produtos de VAS (CLARO FIBRA) que mais variaram na Receita/Bruta.
 --
--- Antes de executar, ajuste as duas datas em PARAMETROS (as mesmas do passo 1).
---
--- Usa os mesmos critérios do passo 1: cliente = COD_OPERADORA + NUM_CONTRATO,
--- VAS = DSC_TIPO_PRODUTO = 'NT', valor = Receita/Bruta.
---
--- Considera somente os clientes que aparecem no passo 1. Para medir a variação
--- de todos os clientes, remova o JOIN com CLIENTES_COM_AUMENTO.
---
--- A ordenação é pelo módulo da variação, então produtos que caíram também
--- aparecem no topo (por exemplo, quando o cliente troca um produto por outro).
+-- Só contas classificadas como CLARO FIBRA no de-para
+-- N5919189.BI_DIM_CONTACONTABIL_FIXA.
+-- Cliente = COD_OPERADORA + NUM_CONTRATO. Considera só clientes cujo VAS
+-- total aumentou. Ajuste as datas em PARAMETROS.
 
 WITH PARAMETROS AS (
     SELECT
-        DATE '2026-07-01' AS MES_ANTERIOR,
-        DATE '2026-08-01' AS MES_ATUAL
+        DATE '2026-09-01' AS MES_ANTERIOR,
+        DATE '2026-10-01' AS MES_ATUAL,
+        'CLARO FIBRA' AS FILTRO_PRODUTO_COGNOS
     FROM DUAL
 ),
 BASE AS (
@@ -27,11 +22,14 @@ BASE AS (
         SUM(CASE WHEN T.DAT_COMPETENCIA = P.MES_ATUAL
                  THEN T.VAL_CALCULADO ELSE 0 END) AS VAL_MES_ATUAL
     FROM u92870757.BI_FP_RECEITA_FIXA T
+    JOIN N5919189.BI_DIM_CONTACONTABIL_FIXA D
+      ON TRIM(TO_CHAR(D.CONTA_CONTABIL)) = TRIM(TO_CHAR(T.COD_CONTA_CONTABIL))
     CROSS JOIN PARAMETROS P
     WHERE T.DSC_TIPO_PRODUTO = 'NT'
       AND T.DSC_TIPO = 'Receita'
       AND T.DSC_SUBTIPO = 'Bruta'
       AND T.DAT_COMPETENCIA IN (P.MES_ANTERIOR, P.MES_ATUAL)
+      AND D.PRODUTO_COGNOS = P.FILTRO_PRODUTO_COGNOS
     GROUP BY
         T.COD_OPERADORA,
         T.NUM_CONTRATO,
@@ -47,15 +45,18 @@ CLIENTES_COM_AUMENTO AS (
         NUM_CONTRATO
     HAVING SUM(VAL_MES_ATUAL) > SUM(VAL_MES_ANTERIOR)
 )
-SELECT
-    B.DSC_PRODUTO,
-    COUNT(*) AS QTD_CLIENTES,
-    ROUND(SUM(B.VAL_MES_ANTERIOR), 2) AS VAL_MES_ANTERIOR,
-    ROUND(SUM(B.VAL_MES_ATUAL), 2) AS VAL_MES_ATUAL,
-    ROUND(SUM(B.VAL_MES_ATUAL) - SUM(B.VAL_MES_ANTERIOR), 2) AS VARIACAO
-FROM BASE B
-JOIN CLIENTES_COM_AUMENTO C
-  ON C.COD_OPERADORA = B.COD_OPERADORA
- AND C.NUM_CONTRATO = B.NUM_CONTRATO
-GROUP BY B.DSC_PRODUTO
-ORDER BY ABS(SUM(B.VAL_MES_ATUAL) - SUM(B.VAL_MES_ANTERIOR)) DESC
+SELECT *
+FROM (
+    SELECT
+        B.DSC_PRODUTO,
+        COUNT(*) AS QTD_CLIENTES,
+        ROUND(SUM(B.VAL_MES_ANTERIOR), 2) AS VAL_MES_ANTERIOR,
+        ROUND(SUM(B.VAL_MES_ATUAL), 2) AS VAL_MES_ATUAL,
+        ROUND(SUM(B.VAL_MES_ATUAL) - SUM(B.VAL_MES_ANTERIOR), 2) AS VARIACAO
+    FROM BASE B
+    JOIN CLIENTES_COM_AUMENTO C
+      ON C.COD_OPERADORA = B.COD_OPERADORA
+     AND C.NUM_CONTRATO = B.NUM_CONTRATO
+    GROUP BY B.DSC_PRODUTO
+) R
+ORDER BY ABS(R.VARIACAO) DESC
