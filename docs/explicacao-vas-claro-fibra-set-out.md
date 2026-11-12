@@ -4,167 +4,133 @@
 
 | Item | Definição usada |
 |---|---|
-| Produto Cognos | **CLARO FIBRA** (de-para `N5919189.BI_DIM_CONTACONTABIL_FIXA` → `PRODUTO_COGNOS`) |
+| Produto Cognos | **CLARO FIBRA** (`N5919189.BI_DIM_CONTACONTABIL_FIXA.PRODUTO_COGNOS`) |
 | Tipo de produto | **NT** (VAS) |
 | Competências | **2026-09-01** × **2026-10-01** |
-| Valor de receita | `DSC_TIPO = 'Receita'` + `DSC_SUBTIPO = 'Bruta'` |
-| Valor de desconto | `DSC_TIPO = 'Desconto'` + `DSC_SUBTIPO = 'Bruta'` |
+| Receita | `DSC_TIPO = 'Receita'` + `DSC_SUBTIPO = 'Bruta'` |
+| Desconto | `DSC_TIPO = 'Desconto'` + `DSC_SUBTIPO = 'Bruta'` |
 | Cliente | `COD_OPERADORA` + `NUM_CONTRATO` |
 | Segmento | `DSC_SEGMENTACAO`, com **CONS = CONSUMO** |
 
-Base: `u92870757.BI_FP_RECEITA_FIXA`, cruzada com a conta contábil do de-para.
+Base: `u92870757.BI_FP_RECEITA_FIXA` × de-para de conta contábil.
+
+Dinâmica para o chefe explorar: rodar `sql/vas_dinamica_analitica.sql`, exportar e pivôtrar.
 
 ---
 
-## 2. Os dois movimentos (visão que bate com o Tableau)
+## 2. Os dois movimentos (bate com o Tableau)
 
 | Movimento | Setembro | Outubro | Variação |
 |---|---:|---:|---:|
 | **Receita / Bruta** | 382.125.502,48 | 386.925.177,61 | **+4.799.675,13** |
 | **Desconto / Bruta** | −5.618.266,06 | −2.920.769,33 | **+2.697.496,73** |
-| Imposto / Bruta | −11.248.035,04 | −11.496.531,12 | −248.496,08 |
 
-Desconto é negativo: variação **positiva** de +2,70 mi significa **menos desconto concedido** (melhora o resultado).
-
-**Conclusão de abertura:** o chefe precisa entender (1) por que a receita de VAS subiu ~4,8 mi e (2) por que o desconto de VAS caiu ~2,7 mi. Os dois estão confirmados na base Oracle alinhada ao Cognos/Tableau.
+Desconto negativo: +2,70 mi = **menos desconto concedido**.
 
 ---
 
-## 3. Movimento 1 — Aumento de receita (+4,80 mi)
+## 3. Movimento 1 — Receita +4,80 mi
 
-### 3.1 Fechamento por tipo de contribuição
-
-Fonte: `query 27.csv`. Soma = **+4.799.675,13**.
+### 3.1 Fechamento por tipo (`query 27`)
 
 | Tipo | Variação | Interpretação |
 |---|---:|---|
-| **RECEITA_NOVA** | **+32.019.876,56** | Cliente sem aquele produto em set, com valor em out |
-| **RECEITA_SUMIU** | **−27.041.979,94** | Cliente tinha o produto em set e zerou em out |
-| AUMENTO | +7.103.382,98 | Já tinha o produto e o valor subiu |
-| QUEDA | −8.242.589,21 | Já tinha o produto e o valor caiu |
-| ESTORNO | +960.984,74 | Valor negativo em set que sumiu em out |
+| **RECEITA_NOVA** | **+32.019.876,56** | Produto zerado em set, com valor em out |
+| **RECEITA_SUMIU** | **−27.041.979,94** | Produto tinha valor em set e zerou |
+| AUMENTO | +7.103.382,98 | Mesmo produto, valor maior |
+| QUEDA | −8.242.589,21 | Mesmo produto, valor menor |
+| ESTORNO | +960.984,74 | Negativo em set que sumiu |
 | **Líquido** | **+4.799.675,13** | |
 
-**Justificativa:** o +4,8 mi **não** é só reajuste de preço. É o líquido de uma **rotação forte de catálogo**: entram ~32 mi de receita “nova” em produtos/clientes e saem ~27 mi de produtos que deixaram de faturar. Ticket em quem já tinha o mesmo produto (+7,1 mi) é menor que a queda no mesmo universo (−8,2 mi).
+**Justificativa:** o +4,8 mi é líquido de **rotação de catálogo** (+32 mi entra / −27 mi sai), não só reajuste de preço.
 
-### 3.2 Concentração em Skeelo
+### 3.2 O que é RECEITA_NOVA de verdade
 
-Família Skeelo (nome contendo `SKEELO`): **~+2,39 mi** ≈ **50%** do líquido de receita.
+`RECEITA_NOVA` **não** significa “cliente novo”. Significa **produto novo naquele cliente**.
 
-Padrão típico de **migração de SKU**:
+Abertura do +32,02 mi:
 
-| Direção | Exemplos | Ordem de grandeza |
-|---|---|---:|
-| Sobe | `SKEELO AUDIOBOOK RED (V)`, `PREMIUM`, `RED (T)`, `RED 15/59/Z/14` | +0,7 a +1,7 mi cada um nos maiores |
-| Cai | `PREMIUM REDUZIDO (C)/(E)/(B)`, `SKEELO` genérico, `RED PADRAO` | −0,9 a −1,7 mi cada um nos maiores |
+| Situação do cliente em setembro | Clientes | Variação | % |
+|---|---:|---:|---:|
+| **Já tinha VAS em set** | 696.531 | **+20.513.786,01** | **64%** |
+| **Sem VAS em set** | 445.704 | **+11.506.090,55** | **36%** |
+| **Total** | | **+32.019.876,56** | 100% |
 
-Exemplo do maior negativo — `SKEELO AUDIOBOOK PREMIUM REDUZIDO (C)`:
+**Justificativa:**
+- **64% (~+20,5 mi):** cliente antigo de VAS que **trocou/adicionou produto** (encaixa na migração Skeelo).
+- **36% (~+11,5 mi):** cliente **sem Receita/Bruta NT Fibra em setembro** (adesão ao VAS nesse recorte, ou cliente que só aparece em out).
 
-- RECEITA_SUMIU: −2,10 mi (115.401 clientes)
-- RECEITA_NOVA: +0,57 mi
-- QUEDA / AUMENTO / ESTORNO: demais
-- **Líquido do produto ≈ −1,74 mi**
+### 3.3 Concentração em Skeelo
 
-Exemplo do maior positivo — `SKEELO AUDIOBOOK RED (V)`: **~+1,67 mi** líquidos.
+Família Skeelo ≈ **+2,39 mi (~50% do líquido** de receita).
 
-**Justificativa:** o aumento de receita de VAS Fibra é, em grande parte, **troca dentro de Skeelo** — saída de ofertas “reduzido/padrão/genérico” e entrada em SKUs RED (V)/(T)/Premium e correlatos — e não um boom uniforme de todos os VAS.
+- Sobe: RED (V), Premium, RED (T), RED 15/59/Z/14…
+- Cai: Premium Reduzido (C)/(E)/(B), Skeelo genérico, RED Padrão
+
+→ migração de ofertas **reduzido/padrão** para SKUs **RED (V)/(T)/Premium**.
 
 ---
 
-## 4. Movimento 2 — Queda de desconto (+2,70 mi)
-
-### 4.1 Fechamento por tipo de contribuição
-
-Fonte: `query 26.csv`. Soma = **+2.697.496,73**.
+## 4. Movimento 2 — Desconto +2,70 mi (`query 26`)
 
 | Tipo | Variação | Interpretação |
 |---|---:|---|
 | **DESCONTO_SUMIU** | **+4.228.370,91** | Tinha desconto em set, zero em out |
-| DESCONTO_NOVO | −1.556.906,32 | Passou a ter desconto em out |
-| DESCONTO_MENOR | +123.492,48 | Desconto ficou menos negativo |
-| DESCONTO_MAIOR | −97.460,34 | Desconto ficou mais negativo |
+| DESCONTO_NOVO | −1.556.906,32 | Desconto novo em out |
+| DESCONTO_MENOR | +123.492,48 | Desconto ficou menor |
+| DESCONTO_MAIOR | −97.460,34 | Desconto ficou maior |
 | **Líquido** | **+2.697.496,73** | |
 
-**Justificativa:** a queda de desconto é sobretudo **fim de concessão** (+4,23 mi de desconto que sumiu), parcialmente compensada por descontos novos (−1,56 mi). Não é um ajuste fino de percentual em massa; é saída de benefício.
+Família Skeelo no desconto ≈ **+1,65 mi (~61%)**.  
+Só `SKEELO AUDIOBOOK RED (V)`: +381 mil (87.771 clientes com desconto sumindo).
 
-### 4.2 Produtos que mais explicam o desconto
-
-| Produto | Variação líquida de desconto |
-|---|---:|
-| SKEELO AUDIOBOOK RED (V) | +380.567,82 |
-| SKEELO AUDIOBOOK PREMIUM REDUZIDO (E) | +243.155,86 |
-| MINHA BANCA RESIDENCIAL REDUZIDO (E) | +238.494,52 |
-| MCAFEE 3 DISPOSITIVOS REDUZIDO (E) | +169.682,22 |
-| SKEELO AUDIOBOOK PREMIUM SOLAR | +162.996,73 |
-| SKEELO AUDIOBOOK RED (T) | +156.453,92 |
-
-Família Skeelo no desconto: **~+1,65 mi** (~61% do +2,70 mi).
-
-Detalhe `SKEELO AUDIOBOOK RED (V)`:
-
-- DESCONTO_SUMIU: **+529.868,60** em **87.771** clientes
-- DESCONTO_NOVO: −157.229,34 em 24.580 clientes
-- Líquido do produto ≈ **+381 mil**
-
-**Justificativa:** o mesmo núcleo de produtos (Skeelo / “reduzido”) que migra na receita também perde desconto — coerente com **fim ou troca de oferta promocional**.
+**Justificativa:** motor = **fim de concessão de desconto**, compatível com vencimento/troca de promoção (hipótese; falta vigência da oferta para cravar).
 
 ---
 
-## 5. Por segmento (`DSC_SEGMENTACAO`)
+## 5. Por segmento
 
-CONS e CONSUMO unificados como **CONSUMO**. Totais batem com +4,80 mi e +2,70 mi.
-
-### Receita / Bruta
-
-| Segmento | Setembro | Outubro | Variação | % do +4,80 mi |
+| Segmento | Receita | % do +4,8 | Desconto | % do +2,7 |
 |---|---:|---:|---:|---:|
-| **CONSUMO** | 342.289.995,71 | 346.601.774,03 | **+4.311.778,32** | **90%** |
-| PE | 37.458.303,95 | 37.911.420,68 | +453.116,73 | 9% |
-| ME | 1.728.071,17 | 1.755.824,56 | +27.753,39 | &lt;1% |
-| GE | 649.131,65 | 656.158,34 | +7.026,69 | &lt;1% |
+| **CONSUMO** | **+4.311.778** | **90%** | **+2.325.640** | **86%** |
+| PE | +453.117 | 9% | +363.835 | 14% |
+| ME | +27.753 | &lt;1% | +6.617 | residual |
+| GE | +7.027 | &lt;1% | +1.404 | residual |
 
-### Desconto / Bruta
-
-| Segmento | Setembro | Outubro | Variação | % do +2,70 mi |
-|---|---:|---:|---:|---:|
-| **CONSUMO** | −4.876.314,10 | −2.550.673,87 | **+2.325.640,23** | **86%** |
-| PE | −725.302,36 | −361.467,29 | +363.835,07 | 14% |
-| ME | −12.882,76 | −6.265,30 | +6.617,46 | residual |
-| GE | −3.766,84 | −2.362,87 | +1.403,97 | residual |
-
-**Justificativa:** o fenômeno é **quase todo Consumo**. PE tem papel secundário; ME/GE não sustentam a narrativa.
+**Justificativa:** fenômeno **quase todo Consumo**.
 
 ---
 
-## 6. Como os dois movimentos se encaixam
+## 6. Narrativa única (atualizada)
 
-1. **Receita sobe (+4,8 mi)** porque há mais faturamento líquido de VAS, mas a mecânica dominante é **migração/rotação de produtos** (principalmente Skeelo), não um aumento homogêneo de ticket.
-2. **Desconto cai (+2,7 mi no resultado)** porque **deixou de ser dado** em massa (`DESCONTO_SUMIU`), com Skeelo e linhas “reduzido” no topo.
-3. Os dois apontam para a **mesma história de oferta**: saída de pacotes promocionais/reduzidos e recomposição do mix de VAS, concentrada em **Consumo / Claro Fibra**.
-4. Efeitos colaterais (estorno, Unbilled) existem, mas **não** são o motor dos +4,8 / +2,7 mi de Bruta.
-
----
-
-## 7. O que **não** explicar com estes números
-
-- Receita “nova” **não** significa cliente 100% novo na base Claro; significa **aquele produto** zerado em set na chave cliente+produto (pode ter tido outro VAS).
-- “Sem VAS” nas aberturas anteriores usava só **NT Receita/Bruta**; não inclui Unbilled/Imposto nem BL/TV.
-- Unbilled e Imposto movem o total NT, mas o pedido do chefe está focado em **Receita Bruta** e **Desconto Bruta**.
+> No VAS Claro Fibra (set→out), Receita Bruta **+R$ 4,8 mi** e Desconto Bruta **+R$ 2,7 mi** no resultado, concentrados em **Consumo** (~90% / ~86%).
+>
+> A receita sobe pelo líquido de troca de produtos (+32 mi entra / −27 mi sai). Dos +32 mi de “receita nova”, **64% (~R$ 20,5 mi) são produto novo em cliente que já tinha VAS em setembro**; **36% (~R$ 11,5 mi) são cliente sem VAS Bruta em setembro**. Skeelo explica ~metade do líquido, com saída de reduzido/padrão e entrada em RED (V)/(T)/Premium.
+>
+> O desconto cai porque **deixou de ser concedido** (+R$ 4,2 mi sumindo), também puxado por Skeelo/reduzido — padrão compatível com fim de promoção, a confirmar com vigência da oferta.
+>
+> Em conjunto: **recomposição de oferta/mix de VAS em Consumo**, não um único reajuste linear de preço.
 
 ---
 
-## 8. Frase-síntese para o chefe
+## 7. Dinâmica para o chefe
 
-> No VAS Claro Fibra, de setembro para outubro, a Receita Bruta subiu **R$ 4,8 mi** e o Desconto Bruta caiu o equivalente a **R$ 2,7 mi** no resultado. Quase tudo está em **Consumo**. A receita sobe pelo líquido de uma grande troca de produtos (entra ~R$ 32 mi, sai ~R$ 27 mi), com Skeelo explicando cerca de metade; o desconto cai porque deixou de ser concedido (~R$ 4,2 mi de desconto sumindo), também puxado por Skeelo/reduzido. Em conjunto, indica **recomposição de oferta/mix de VAS**, não um único reajuste linear de preço.
+1. Rodar `sql/vas_dinamica_analitica.sql` no DBeaver.
+2. Exportar CSV/Excel.
+3. Criar Tabela Dinâmica / Tableau com:
+   - Filtros: `DSC_SEGMENTACAO`, `DSC_TIPO`, `TIPO_CONTRIBUICAO`, `SITUACAO_CLIENTE_SET`, `DSC_PRODUTO`
+   - Valor: `VARIACAO` (e opcionalmente `QTD_CLIENTES`)
+4. Visões sugeridas:
+   - Receita × Desconto (total)
+   - Por segmento
+   - Por tipo de contribuição
+   - Em `RECEITA_NOVA`: quebrar por `SITUACAO_CLIENTE_SET`
+   - Top produtos (filtro família Skeelo)
 
 ---
 
-## 9. Evidências (arquivos)
+## 8. Limitações
 
-| Arquivo / consulta | Papel |
-|---|---|
-| Resumo Claro Fibra (Receita/Desconto/Imposto) | Bate Tableau (+4,80 / +2,70) |
-| `query 26.csv` | Fechamento desconto |
-| `query 27.csv` | Fechamento receita |
-| Abertura por `DSC_SEGMENTACAO` | Consumo ~90% / ~86% |
-| Scripts em `sql/` no branch `cursor/analise-aumento-vas-d2cc` | Reprodução Oracle |
+- Critério = só NT Receita/Desconto **Bruta** Claro Fibra.
+- “Sem VAS em set” = sem Receita/Bruta NT Fibra; pode ter Unbilled/Imposto/BL/TV.
+- Hipótese de promoção vencida é **compatível** com os dados, não comprovada só com set×out.
