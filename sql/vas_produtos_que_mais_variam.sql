@@ -1,8 +1,6 @@
 -- Passo 2: produtos de VAS que mais variaram entre os clientes com aumento.
 --
--- Antes de executar:
---   1. Troque NOME_DA_TABELA pela tabela de origem.
---   2. Ajuste as duas datas em PARAMETROS (as mesmas do passo 1).
+-- Antes de executar, ajuste as duas datas em PARAMETROS (as mesmas do passo 1).
 --
 -- Usa os mesmos critérios do passo 1: cliente = COD_OPERADORA + NUM_CONTRATO,
 -- VAS = DSC_TIPO_PRODUTO = 'NT', valor = Receita/Bruta.
@@ -28,7 +26,7 @@ BASE AS (
                  THEN T.VAL_CALCULADO ELSE 0 END) AS VAL_MES_ANTERIOR,
         SUM(CASE WHEN T.DAT_COMPETENCIA = P.MES_ATUAL
                  THEN T.VAL_CALCULADO ELSE 0 END) AS VAL_MES_ATUAL
-    FROM NOME_DA_TABELA T
+    FROM u92870757.BI_FP_RECEITA_FIXA T
     CROSS JOIN PARAMETROS P
     WHERE T.DSC_TIPO_PRODUTO = 'NT'
       AND T.DSC_TIPO = 'Receita'

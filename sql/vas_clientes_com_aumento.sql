@@ -1,8 +1,6 @@
 -- Passo 1: clientes cujo VAS aumentou de um mês para o outro.
 --
--- Antes de executar:
---   1. Troque NOME_DA_TABELA pela tabela de origem.
---   2. Ajuste as duas datas em PARAMETROS.
+-- Antes de executar, ajuste as duas datas em PARAMETROS.
 --
 -- Cliente = COD_OPERADORA + NUM_CONTRATO. VAS = DSC_TIPO_PRODUTO = 'NT'.
 --
@@ -33,7 +31,7 @@ SELECT
         THEN 'NOVO'
         ELSE 'AUMENTO'
     END AS TIPO_VARIACAO
-FROM NOME_DA_TABELA T
+FROM u92870757.BI_FP_RECEITA_FIXA T
 CROSS JOIN PARAMETROS P
 WHERE T.DSC_TIPO_PRODUTO = 'NT'
   AND T.DSC_TIPO = 'Receita'
