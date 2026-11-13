@@ -29,8 +29,10 @@ Classificação **por cliente + produto (+ artigo)**, comparando valor de set co
 
 | Nome | Regra | Em português |
 |---|---|---|
-| **RECEITA_NOVA** | Set = 0 e Out > 0 | O cliente **não tinha esse produto** em setembro e passou a ter em outubro. **Não** significa cliente novo na Claro. |
+| **RECEITA_NOVA** | Set = 0 e Out > 0 | O cliente **não tinha esse produto** (`DSC_PRODUTO`) em setembro e passou a ter em outubro. **Não** significa cliente novo na Claro. |
 | **RECEITA_SUMIU** | Set > 0 e Out = 0 | Tinha o produto em setembro e **zerou** em outubro. |
+
+**Atenção — mudança de nome:** se o `DSC_PRODUTO` mudar (rename/migração de SKU), o sistema trata como **RECEITA_SUMIU** no nome antigo + **RECEITA_NOVA** no nome novo, mesmo sendo o mesmo cliente. Isso entra no +32 mi / −27 mi. O `DSC_ARTIGO` às vezes é mais estável e ajuda a ver a família (ex.: VASSKEELORES).
 | **AUMENTO** | Out > Set (e não é os casos acima) | Já tinha o produto e o valor **subiu**. |
 | **QUEDA** | Out < Set (com Set ≥ 0) | Já tinha o produto e o valor **caiu**. |
 | **ESTORNO** | Set < 0 e Out = 0 | Tinha valor **negativo** em setembro (crédito/estorno) e zerou. Aparece como variação positiva, mas não é venda nova. |
